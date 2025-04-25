@@ -1,7 +1,7 @@
 // src/components/AudioPlayer.tsx
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Loader2, XCircle } from 'lucide-react';
+import { Play, Pause, Loader2 } from 'lucide-react';
 
 interface AudioPlayerProps {
   audioUrl: string;
@@ -39,16 +39,68 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
 
   // Create audio sources with well-supported formats that will work in browsers
   const getAudioSources = (url: string): string[] => {
-    const chapterVerse = extractChapterVerse(url);
-    if (!chapterVerse) return [url];
+    try {
+      const chapterVerse = extractChapterVerse(url);
+      if (!chapterVerse) {
+        // If we can't extract chapter and verse from URL, use it directly
+        console.log('Using direct audio URL:', url);
+        return [url];
+      }
+      
+      const { chapter, verse } = chapterVerse;
+      
+      // Create multiple audio source URLs from different CDNs to increase reliability
+      return [
+        // Primary source (with proper padding for chapter and verse IDs)
+        `https://audio.qurancdn.com/Alafasy/${chapter.padStart(3, '0')}${verse.padStart(3, '0')}.mp3`,
+        // Backup sources
+        `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${chapter}_${verse}.mp3`,
+        `https://verses.quran.com/Alafasy/${chapter.padStart(3, '0')}${verse.padStart(3, '0')}.mp3`
+      ];
+    } catch (error) {
+      console.error('Error getting audio sources:', error);
+      return [url]; // Fallback to the original URL
+    }
+  };
+
+  // Function to try loading audio from multiple sources
+  const tryLoadingAudio = (sources: string[], index = 0) => {
+    if (index >= sources.length || !audioRef.current) {
+      setAudioAvailable(false);
+      setIsLoading(false);
+      return;
+    }
+
+    // Set current source
+    audioRef.current.src = sources[index];
     
-    const { chapter, verse } = chapterVerse;
-    
-    // We'll use a hardcoded working audio source rather than trying to be clever
-    // This is a reliable source that works across browsers
-    return [
-      `https://audio.qurancdn.com/Alafasy/${chapter.padStart(3, '0')}${verse.padStart(3, '0')}.mp3`
-    ];
+    // Try to load the audio metadata
+    audioRef.current.load();
+
+    // Set up one-time event handlers to check if this source works
+    const handleCanPlayThis = () => {
+      console.log('Audio can play from source:', sources[index]);
+      setAudioAvailable(true);
+      setIsLoading(false);
+      cleanup();
+    };
+
+    const handleErrorThis = () => {
+      console.log('Failed to load audio from source:', sources[index]);
+      // Try next source
+      cleanup();
+      tryLoadingAudio(sources, index + 1);
+    };
+
+    const cleanup = () => {
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('canplaythrough', handleCanPlayThis);
+        audioRef.current.removeEventListener('error', handleErrorThis);
+      }
+    };
+
+    audioRef.current.addEventListener('canplaythrough', handleCanPlayThis, { once: true });
+    audioRef.current.addEventListener('error', handleErrorThis, { once: true });
   };
 
   useEffect(() => {
@@ -73,13 +125,7 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
 
     // Create HTML audio element
     const audioElement = new Audio();
-    
-    // Attempt to use local storage to check if we've previously determined this audio is unavailable
-    const audioKey = audioUrl.replace(/[^a-zA-Z0-9]/g, '_');
-    if (typeof window !== 'undefined' && localStorage.getItem(`audio_unavailable_${audioKey}`)) {
-      setAudioAvailable(false);
-      return;
-    }
+    audioRef.current = audioElement;
     
     // Set up event handlers
     const handlePlay = () => setIsPlaying(true);
@@ -100,21 +146,6 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
       }
     };
     
-    // Define the error handler without logging the event object
-    const handleError = (e: Event) => {
-      // Don't log as an error - use info level instead
-      console.info("Audio unavailable", audioUrl);
-      
-      // Mark this audio as unavailable
-      setAudioAvailable(false);
-      setIsLoading(false);
-      
-      // Remember this audio was unavailable
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`audio_unavailable_${audioKey}`, 'true');
-      }
-    };
-    
     // Add event listeners
     audioElement.addEventListener('play', handlePlay);
     audioElement.addEventListener('pause', handlePause);
@@ -122,23 +153,15 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
     audioElement.addEventListener('waiting', handleWaiting);
     audioElement.addEventListener('canplay', handleCanPlay);
     audioElement.addEventListener('timeupdate', handleTimeUpdate);
-    audioElement.addEventListener('error', handleError);
     
-    // Get audio sources
-    const sources = getAudioSources(audioUrl);
-    audioElement.src = sources[0];
-    
-    // Set reference
-    audioRef.current = audioElement;
+    // Get audio sources and try to load them
     setIsLoading(true);
-    
-    // Preload metadata only to reduce bandwidth
-    audioElement.preload = 'metadata';
+    const sources = getAudioSources(audioUrl);
+    tryLoadingAudio(sources);
     
     // Set a timeout for loading
     const loadTimeout = setTimeout(() => {
       if (audioElement && audioElement.readyState < 2) {
-        setAudioAvailable(false);
         setIsLoading(false);
       }
     }, 5000);
@@ -152,7 +175,6 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
       audioElement.removeEventListener('waiting', handleWaiting);
       audioElement.removeEventListener('canplay', handleCanPlay);
       audioElement.removeEventListener('timeupdate', handleTimeUpdate);
-      audioElement.removeEventListener('error', handleError);
       audioElement.pause();
       audioElement.src = '';
     };
@@ -173,28 +195,41 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
       
       // Play with error handling
       setIsLoading(true);
-      audioRef.current.play()
-        .then(() => {
-          setIsLoading(false);
-        })
-        .catch(() => {
-          // Don't show detailed error messages, just handle gracefully
-          setAudioAvailable(false);
-          setIsPlaying(false);
-          setIsLoading(false);
-        });
+      const playPromise = audioRef.current.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsLoading(false);
+            console.log('Audio playback started successfully');
+          })
+          .catch(error => {
+            console.error('Error playing audio:', error);
+            
+            // Try to handle "user didn't interact with document first" error
+            if (error.name === 'NotAllowedError') {
+              console.log('Autoplay prevented: User needs to interact first');
+              setIsLoading(false);
+            } else {
+              setAudioAvailable(false);
+              setIsPlaying(false);
+              setIsLoading(false);
+            }
+          });
+      }
     }
   };
 
-  // If audio is not available, show a disabled button
+  // If audio is not available, show a disabled play button instead of X icon
   if (!audioAvailable) {
     return (
-      <span 
-        className="icon-btn text-gray-400 dark:text-gray-600 cursor-not-allowed"
+      <button 
+        className="icon-btn text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50 rounded-full p-2"
         title="Audio not available"
+        disabled={true}
       >
-        <XCircle className="h-5 w-5" />
-      </span>
+        <Play className="h-5 w-5" />
+      </button>
     );
   }
 
@@ -202,7 +237,7 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
     <button
       onClick={togglePlayPause}
       disabled={isLoading}
-      className={`icon-btn hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-all duration-300 relative ${isPlaying ? 'text-teal-500 hover:text-teal-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+      className={`icon-btn hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full p-2 transition-all duration-300 relative ${isPlaying ? 'text-teal-500 hover:text-teal-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
       aria-label={isPlaying ? 'Pause' : 'Play'}
       title={isPlaying ? 'Pause audio' : 'Play audio'}
     >

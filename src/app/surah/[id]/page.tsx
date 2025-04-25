@@ -4,7 +4,7 @@ import ChapterHeader from '@/components/ChapterHeader';
 import VerseItem from '@/components/VerseItem';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Search, Share2, BookMarked, Settings } from 'lucide-react';
+import { ArrowLeft, Share2, BookMarked, Settings } from 'lucide-react';
 
 export default async function SurahPage({ 
   params 
@@ -57,22 +57,8 @@ export default async function SurahPage({
             {verses && verses.length > 0 ? (
               <div>
                 <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Verses</h2>
                   <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <input 
-                        type="text"
-                        placeholder="Find verse..." 
-                        className="bg-white dark:bg-gray-800 rounded-full px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 border border-gray-200 dark:border-gray-700 transition-all duration-300 w-48 focus:w-64 shadow-sm"
-                      />
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-teal-500" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-teal-500 text-white text-xs font-medium">
-                        {verses.length}
-                      </span>
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">Verses</span>
-                    </div>
+                    {/* Removed the verse number indicator */}
                   </div>
                 </div>
                 
@@ -107,7 +93,7 @@ export default async function SurahPage({
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center p-4">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 max-w-lg w-full text-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 9 9 11-18 0 9 9 0 0118 0z" />
           </svg>
           <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Unable to load Surah</h1>
           <p className="text-gray-600 dark:text-gray-300 mb-6">There was an error loading this surah. Please try again later or check your connection.</p>

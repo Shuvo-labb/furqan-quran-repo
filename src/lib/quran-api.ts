@@ -127,13 +127,6 @@ export const getVerses = async (chapterId: number): Promise<Verse[]> => {
         }
       }
 
-      // Log audio URL for debugging
-      if (audioUrl) {
-        console.log(`Verse ${verse.verse_number} audio URL: ${audioUrl}`);
-      } else {
-        console.log(`No audio URL found for verse ${verse.verse_number}`);
-      }
-
       // Clean up translation text
       const rawTranslation = verse.translations?.[0]?.text || '';
       const cleanedTranslation = cleanTranslationText(rawTranslation);

@@ -11,7 +11,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: 'Quran Reader',
+  title: 'Furqan',
   description: 'A beautiful Quran reading experience',
 };
 
@@ -32,7 +32,7 @@ export default function RootLayout({
               </main>
               <footer className="site-footer">
                 <div className="container text-center text-secondary">
-                  <p>© {new Date().getFullYear()} Quran Reader. All rights reserved.</p>
+                  <p>© {new Date().getFullYear()} Furqan. All rights reserved.</p>
                 </div>
               </footer>
             </div>
