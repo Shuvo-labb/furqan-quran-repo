@@ -1,0 +1,11 @@
+{
+  "css.validate": true,
+  "less.validate": false,
+  "scss.validate": false,
+  "stylelint.validate": ["css", "scss"],
+  "css.lint.unknownAtRules": "ignore",
+  "json.schemas": [],
+  "json.validate.enable": true,
+  "editor.fontFamily": "Tagesschrift, Consolas, 'Courier New', monospace",
+  "terminal.integrated.fontFamily": "Tagesschrift, monospace"
+}
